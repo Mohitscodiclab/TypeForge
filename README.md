@@ -19,7 +19,7 @@
 
 ## 🚀 Live Demo
 
-**[👉 Play TypeForge Live on GitHub Pages](https://your-username.github.io/TypeForge/)**
+**[👉 Play TypeForge Live on GitHub Pages](https://mohitscodiclab.github.io/TypeForge/)**
 
 *(Note: Replace `your-username` and `TypeForge` with your actual GitHub username and repository name once hosted!)*
 
