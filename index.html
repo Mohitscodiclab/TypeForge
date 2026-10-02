@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TypeForge - Type Better. Think Faster.</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        oled: {
+                            black: '#000000',
+                            surface: '#0a0a0a',
+                            surface2: '#111111',
+                            surface3: '#1a1a1a',
+                        },
+                        accent: {
+                            DEFAULT: '#00ff88',
+                            dark: '#00cc6a'
+                        },
+                        text: {
+                            primary: '#f0f6fc',
+                            secondary: '#8b949e',
+                            muted: '#484f58'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #000000;
+            color: #f0f6fc;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar for OLED */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #333333; }
+
+        /* Typing Area Styles */
+        .char {
+            color: #484f58;
+            transition: color 0.1s ease;
+            position: relative;
+        }
+        .char.correct { color: #8b949e; }
+        .char.incorrect { 
+            color: #ff5555; 
+            text-decoration: underline;
+            text-decoration-color: #ff5555;
+        }
+        
+        /* Blinking Caret */
+        .caret {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background-color: #00ff88;
+            animation: blink 1s step-end infinite;
+            z-index: 10;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Keyboard Key Styles */
+        .key {
+            transition: all 0.1s ease;
+            border: 1px solid #1a1a1a;
+        }
+        .key.active {
+            background-color: #00ff88;
+            color: #000000;
+            border-color: #00ff88;
+            transform: scale(0.95);
+        }
+        .key.hint {
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+        }
+
+        /* Modals & Overlays */
+        .glass-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden selection:bg-accent selection:text-black">
+
+    <nav class="w-20 md:w-64 h-full bg-oled-surface border-r border-oled-surface3 flex flex-col justify-between py-6 shrink-0 transition-all duration-300">
+        <div>
+            <div class="px-4 md:px-8 mb-10 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-black font-bold text-xl shrink-0">
+                    TF
+                </div>
+                <div class="hidden md:block">
+                    <h1 class="font-bold text-lg leading-tight tracking-wide">TypeForge</h1>
+                    <p class="text-[10px] text-text-secondary uppercase tracking-widest">Type Better. Think Faster.</p>
+                </div>
+            </div>
+
+            <ul class="space-y-2 px-3 md:px-4">
+                <li>
+                    <a href="#" class="nav-item active flex items-center gap-4 px-4 py-3 rounded-xl bg-oled-surface3 text-accent font-medium">
+                        <i class="ph ph-house text-xl"></i>
+                        <span class="hidden md:block">Home</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                        <i class="ph ph-book-open text-xl"></i>
+                        <span class="hidden md:block">Lessons</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                        <i class="ph ph-lightning text-xl"></i>
+                        <span class="hidden md:block">Practice</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                        <i class="ph ph-chart-bar text-xl"></i>
+                        <span class="hidden md:block">Stats</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                        <i class="ph ph-trophy text-xl"></i>
+                        <span class="hidden md:block">Achievements</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" onclick="showSettingsModal()" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                        <i class="ph ph-gear text-xl"></i>
+                        <span class="hidden md:block">Settings</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="px-4 hidden md:block">
+            <div class="bg-oled-surface2 p-4 rounded-2xl border border-oled-surface3 relative overflow-hidden">
+                <div class="absolute -right-4 -bottom-4 opacity-10">
+                    <i class="ph-fill ph-keyboard text-6xl text-accent"></i>
+                </div>
+                <h4 class="text-sm font-semibold mb-1 text-accent">Small steps</h4>
+                <p class="text-xs text-text-secondary mb-3">make big progress.</p>
+                <div class="w-full bg-oled-surface3 h-1.5 rounded-full overflow-hidden">
+                    <div id="sidebar-progress-bar" class="bg-accent h-full w-1/4 rounded-full"></div>
+                </div>
+                <p class="text-[10px] text-text-muted mt-2" id="sidebar-progress-text">Day 1 / 30</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 h-full overflow-y-auto overflow-x-hidden p-6 md:p-10 scroll-smooth">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-end mb-8">
+            <div>
+                <h2 class="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
+                    <span id="greeting-text">Good evening, Typist</span> <span class="wave">👋</span>
+                </h2>
+                <p class="text-text-secondary text-sm md:text-base">Today is a new chance to get better. Keep going!</p>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-4">
+                <button class="w-10 h-10 rounded-full bg-oled-surface2 flex items-center justify-center text-text-secondary hover:text-accent transition-colors">
+                    <i class="ph ph-sun"></i>
+                </button>
+                <div class="flex items-center gap-3 bg-oled-surface2 py-2 px-4 rounded-full cursor-pointer hover:bg-oled-surface3 transition-colors" onclick="showSettingsModal()">
+                    <div class="w-8 h-8 rounded-full bg-accent text-black font-bold flex items-center justify-center text-sm" id="avatar-initial">T</div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-medium leading-none mb-1" id="profile-name">Typist</span>
+                        <span class="text-[10px] text-accent leading-none">● Online</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <section class="bg-oled-surface2 rounded-3xl p-6 border border-oled-surface3 mb-8 relative overflow-hidden group">
+            <div class="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+            
+            <div class="flex flex-col md:flex-row justify-between md:items-center gap-6 relative z-10">
+                <div class="flex gap-5 items-start">
+                    <div class="w-12 h-12 rounded-2xl bg-oled-surface3 border border-oled-surface/50 flex items-center justify-center shrink-0">
+                        <i class="ph ph-target text-2xl text-accent"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-accent uppercase tracking-widest font-semibold mb-1">Today's Lesson</p>
+                        <h3 class="text-xl font-bold mb-2" id="current-lesson-title">Lesson 1 — Basics</h3>
+                        <p class="text-text-secondary text-sm max-w-md" id="current-lesson-desc">Learn the home-row keys and build accurate finger placement with fundamental strokes.</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col items-end gap-3 shrink-0">
+                    <button id="start-lesson-btn" class="bg-accent hover:bg-accent-dark text-black font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center gap-2 transform hover:scale-105">
+                        Start Lesson <i class="ph ph-arrow-right"></i>
+                    </button>
+                    <div class="flex flex-col items-end w-full">
+                        <span class="text-xs text-text-secondary mb-1" id="lesson-progress-text">0 / 30 lessons</span>
+                        <div class="w-32 bg-oled-surface3 h-1.5 rounded-full overflow-hidden">
+                            <div id="lesson-progress-bar" class="bg-accent h-full w-0 rounded-full transition-all duration-1000"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="typing-workspace" class="bg-oled-surface2 rounded-3xl p-6 md:p-10 border border-oled-surface3 mb-8 relative min-h-[400px] flex flex-col transition-all duration-300">
+            
+            <!-- Lesson Header within Typing Area -->
+            <div class="flex justify-between items-center mb-8 border-b border-oled-surface3 pb-4">
+                <div class="flex items-center gap-3">
+                    <span class="text-text-secondary text-sm" id="active-lesson-label">Lesson 1 • Basics</span>
+                    <span class="bg-oled-surface3 text-text-primary text-[10px] px-2 py-1 rounded-md uppercase tracking-wider">Easy</span>
+                </div>
+                <div class="flex items-center gap-4 text-sm font-mono" id="real-time-metrics">
+                    <div class="flex items-center gap-1.5 text-text-secondary"><i class="ph ph-clock text-accent"></i> <span id="timer-display">00:00</span></div>
+                    <div class="flex items-center gap-1.5 text-text-secondary"><i class="ph ph-speedometer text-accent"></i> <span id="wpm-display">0</span> WPM</div>
+                    <div class="flex items-center gap-1.5 text-text-secondary"><i class="ph ph-target text-accent"></i> <span id="acc-display">100</span>%</div>
+                </div>
+            </div>
+
+            <!-- The Text -->
+            <div id="typing-text-container" class="font-mono text-2xl md:text-3xl leading-relaxed text-text-muted mb-12 relative whitespace-pre-wrap select-none focus:outline-none" tabindex="0">
+                <div class="absolute inset-0 flex items-center justify-center bg-oled-surface2/90 z-20" id="typing-overlay">
+                    <p class="text-text-primary text-lg flex flex-col items-center gap-2">
+                        <span>Click here or press <kbd class="bg-oled-surface3 px-2 py-1 rounded text-accent border border-oled-surface3">Enter</kbd> to start</span>
+                    </p>
+                </div>
+                <div id="text-display" class="relative z-10 break-words w-full blur-[2px] transition-all duration-300"></div>
+            </div>
+
+            <!-- On-Screen Keyboard -->
+            <div class="mt-auto max-w-3xl mx-auto w-full transition-opacity duration-300" id="keyboard-container">
+                <div class="flex flex-col gap-2">
+                    <!-- Row 1 -->
+                    <div class="flex justify-center gap-1.5 md:gap-2">
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="q">Q</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="w">W</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="e">E</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="r">R</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="t">T</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="y">Y</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="u">U</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="i">I</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="o">O</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="p">P</div>
+                    </div>
+                    <!-- Row 2 -->
+                    <div class="flex justify-center gap-1.5 md:gap-2 ml-4">
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="a">A</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="s">S</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="d">D</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="f">F</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="g">G</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="h">H</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="j">J</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="k">K</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="l">L</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=";">;</div>
+                    </div>
+                    <!-- Row 3 -->
+                    <div class="flex justify-center gap-1.5 md:gap-2 ml-10">
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="z">Z</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="x">X</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="c">C</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="v">V</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="b">B</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="n">N</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="m">M</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=",">,</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=".">.</div>
+                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="/">/</div>
+                    </div>
+                    <!-- Spacebar -->
+                    <div class="flex justify-center mt-2">
+                        <div class="key w-48 md:w-64 h-10 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=" ">SPACE</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="restart-lesson-btn" class="absolute bottom-6 right-6 p-3 rounded-xl bg-oled-surface3 text-text-secondary hover:text-text-primary hover:bg-oled-surface transition-colors" title="Restart (Tab)">
+                <i class="ph ph-arrow-counter-clockwise text-xl"></i>
+            </button>
+        </section>
+
+    </main>
+
+    <aside class="w-80 h-full bg-oled-surface border-l border-oled-surface3 p-6 shrink-0 hidden xl:flex flex-col overflow-y-auto">
+        
+        <!-- Level Progress -->
+        <div class="bg-oled-surface2 rounded-2xl p-5 border border-oled-surface3 mb-6">
+            <h3 class="flex items-center gap-2 text-sm font-semibold mb-4 text-text-primary">
+                <i class="ph ph-trend-up text-accent"></i> Your Progress
+            </h3>
+            <div class="flex items-center gap-6">
+                <div class="relative w-16 h-16 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-oled-surface3" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path id="level-svg-path" class="text-accent transition-all duration-1000 ease-out" stroke-width="3" stroke-dasharray="0, 100" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    </svg>
+                    <div class="absolute flex flex-col items-center">
+                        <span class="text-[10px] text-text-secondary leading-none">Level</span>
+                        <span class="text-xl font-bold leading-none mt-1" id="ui-level">1</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-accent font-medium flex items-center gap-1 text-sm"><span class="w-2 h-2 rounded-full bg-accent inline-block"></span> <span id="ui-title">Beginner</span></p>
+                    <p class="text-xs text-text-secondary mt-1">Next level at <span id="ui-xp-needed">50</span> XP</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Streak -->
+        <div class="bg-oled-surface2 rounded-2xl p-5 border border-oled-surface3 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                    <i class="ph-fill ph-fire text-[#ff6b6b]"></i> Daily Streak
+                </h3>
+                <span class="font-bold text-sm" id="ui-streak-count">0 days</span>
+            </div>
+            <div class="flex justify-between text-xs text-text-secondary font-mono" id="streak-days-container">
+                <!-- Generated by JS -->
+            </div>
+        </div>
+
+        <!-- Your Stats -->
+        <div class="bg-oled-surface2 rounded-2xl p-5 border border-oled-surface3 mb-6">
+            <h3 class="flex items-center gap-2 text-sm font-semibold mb-4 text-text-primary">
+                <i class="ph ph-chart-line text-accent"></i> Your Stats
+            </h3>
+            <div class="grid grid-cols-2 gap-y-6 gap-x-4">
+                <div>
+                    <p class="text-xs text-text-secondary mb-1">Avg. WPM</p>
+                    <p class="text-2xl font-bold font-mono" id="ui-avg-wpm">0</p>
+                </div>
+                <div>
+                    <p class="text-xs text-text-secondary mb-1">Best WPM</p>
+                    <p class="text-2xl font-bold font-mono" id="ui-best-wpm">0</p>
+                </div>
+                <div>
+                    <p class="text-xs text-text-secondary mb-1">Total Time</p>
+                    <p class="text-base font-semibold" id="ui-total-time">0m</p>
+                </div>
+                <div>
+                    <p class="text-xs text-text-secondary mb-1">Completed</p>
+                    <p class="text-base font-semibold" id="ui-total-lessons">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quote -->
+        <div class="mt-auto bg-oled-surface2/50 rounded-2xl p-5 border border-oled-surface3 border-dashed relative overflow-hidden">
+            <i class="ph-fill ph-quotes text-3xl text-text-muted absolute -top-2 -left-2 opacity-50"></i>
+            <p class="text-sm italic text-text-secondary relative z-10 pl-2">"Discipline today, freedom tomorrow."</p>
+        </div>
+
+    </aside>
+
+    
+    <!-- Welcome / First Time Modal -->
+    <div id="welcome-modal" class="fixed inset-0 glass-overlay z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-oled-surface2 border border-oled-surface3 p-8 rounded-3xl max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-black mb-6 mx-auto">
+                <i class="ph ph-hand-waving text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-center mb-2">Welcome to TypeForge</h2>
+            <p class="text-center text-text-secondary mb-8">Build your typing skill one lesson at a time. All progress is saved locally in your browser.</p>
+            
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-text-secondary mb-2">What should we call you?</label>
+                <input type="text" id="welcome-name-input" placeholder="Enter your name" class="w-full bg-oled-surface3 border border-oled-surface/50 rounded-xl px-4 py-3 text-text-primary focus:outline-none focus:border-accent transition-colors">
+            </div>
+            
+            <button id="welcome-start-btn" class="w-full bg-accent hover:bg-accent-dark text-black font-bold py-3 px-4 rounded-xl transition-colors">
+                Start Learning
+            </button>
+        </div>
+    </div>
+
+    <!-- Lesson Complete Modal -->
+    <div id="result-modal" class="fixed inset-0 glass-overlay z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-oled-surface2 border border-oled-surface3 p-8 rounded-3xl max-w-lg w-full shadow-2xl text-center transform scale-95 transition-transform duration-300 relative overflow-hidden">
+            
+            <div class="absolute top-0 left-0 w-full h-1 bg-accent" id="result-accent-bar"></div>
+            
+            <h2 class="text-3xl font-bold mb-1 mt-2">Lesson Complete <span class="wave">🎉</span></h2>
+            <p class="text-text-secondary mb-8" id="result-subtitle">Great job! Here is how you did.</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-oled-surface3 rounded-2xl p-4">
+                    <p class="text-xs text-text-secondary mb-1">WPM</p>
+                    <p class="text-3xl font-bold font-mono text-accent" id="result-wpm">0</p>
+                </div>
+                <div class="bg-oled-surface3 rounded-2xl p-4">
+                    <p class="text-xs text-text-secondary mb-1">Accuracy</p>
+                    <p class="text-3xl font-bold font-mono" id="result-acc">0%</p>
+                </div>
+                <div class="bg-oled-surface3 rounded-2xl p-4">
+                    <p class="text-xs text-text-secondary mb-1">Time</p>
+                    <p class="text-xl font-bold font-mono mt-2" id="result-time">00:00</p>
+                </div>
+                <div class="bg-oled-surface3 rounded-2xl p-4 border border-accent/20">
+                    <p class="text-xs text-text-secondary mb-1">XP Earned</p>
+                    <p class="text-xl font-bold text-accent mt-2" id="result-xp">+0</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button id="result-retry-btn" class="bg-oled-surface3 hover:bg-oled-surface text-text-primary font-medium py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <i class="ph ph-arrow-counter-clockwise"></i> Retry
+                </button>
+                <button id="result-next-btn" class="bg-accent hover:bg-accent-dark text-black font-bold py-3 px-6 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    Next Lesson <i class="ph ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="fixed inset-0 glass-overlay z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-oled-surface2 border border-oled-surface3 p-8 rounded-3xl max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300 relative">
+            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 text-text-secondary hover:text-white"><i class="ph ph-x text-xl"></i></button>
+            
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><i class="ph ph-gear text-accent"></i> Settings</h2>
+            
+            <div class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-text-secondary mb-2">Display Name</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="settings-name" class="w-full bg-oled-surface3 border border-oled-surface/50 rounded-xl px-4 py-2 text-text-primary focus:outline-none focus:border-accent">
+                        <button onclick="saveName()" class="bg-oled-surface3 hover:bg-accent hover:text-black px-4 rounded-xl transition-colors text-sm font-medium">Save</button>
+                    </div>
+                </div>
+
+                <div class="border-t border-oled-surface3 pt-6">
+                    <h3 class="text-sm font-semibold mb-4 text-[#ff5555]">Danger Zone</h3>
+                    <p class="text-xs text-text-secondary mb-4">Your data is stored locally in this browser. Export it for backup, or delete it to start fresh.</p>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="exportData()" class="bg-oled-surface3 hover:bg-oled-surface text-text-primary font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i class="ph ph-download-simple"></i> Export Data (JSON)
+                        </button>
+                        <button onclick="document.getElementById('import-file').click()" class="bg-oled-surface3 hover:bg-oled-surface text-text-primary font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+                            <i class="ph ph-upload-simple"></i> Import Data
+                            <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
+                        </button>
+                        <button onclick="clearData()" class="border border-[#ff5555]/30 text-[#ff5555] hover:bg-[#ff5555]/10 font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm mt-2">
+                            <i class="ph ph-trash"></i> Delete All Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATA STRUCTURES & LESSONS ---
+        const LESSONS = [
+            { id: 1, title: "F & J Basics", diff: "Beginner", xp: 50, text: "fff jjj ff jj fj jf ffjj jjff f j f j" },
+            { id: 2, title: "D & K Additions", diff: "Beginner", xp: 50, text: "dd kk dk kd ddkk kkdd d f k j df kj" },
+            { id: 3, title: "S & L Practice", diff: "Beginner", xp: 50, text: "ss ll sl ls ssll llss s d f l k j sf lj" },
+            { id: 4, title: "A & ; Anchors", diff: "Beginner", xp: 50, text: "aa ;; a; ;a aa;; ;;aa a s d f ; l k j" },
+            { id: 5, title: "Home Row Mastery", diff: "Easy", xp: 100, text: "asdf jkl; fdsa ;lkj as df jk l; fall ask dad sad lad glad" },
+            { id: 6, title: "Top Row: E & I", diff: "Easy", xp: 60, text: "ee ii de ki ded kik see kid did like side slide" },
+            { id: 7, title: "Top Row: R & U", diff: "Easy", xp: 60, text: "rr uu fr ju fur jar red use sure rule ride rude" },
+            { id: 8, title: "Top Row: T & Y", diff: "Easy", xp: 60, text: "tt yy ft jy yet try toy true yes they say stay" },
+            { id: 9, title: "Top Row: Q, W, O, P", diff: "Easy", xp: 80, text: "qq ww oo pp saw wow pot top drop stop quote power" },
+            { id: 10, title: "Bottom Row: C & ,", diff: "Medium", xp: 70, text: "cc ,, dc k, cat car call, mac, nice, face, space," },
+            { id: 11, title: "Bottom Row: V & M", diff: "Medium", xp: 70, text: "vv mm fv jm van man move make time same come from" },
+            { id: 12, title: "Full Alphabet", diff: "Medium", xp: 150, text: "the quick brown fox jumps over the lazy dog" },
+            { id: 13, title: "Common Words 1", diff: "Medium", xp: 100, text: "the be to of and a in that have i it for not on with" },
+            { id: 14, title: "Common Words 2", diff: "Medium", xp: 100, text: "he as you do at this but his by from they we say her" },
+            { id: 15, title: "Short Sentences", diff: "Hard", xp: 120, text: "this is a simple test. typing fast is fun and useful. keep your eyes on the screen." }
+        ];
+
+        const DEFAULT_DATA = {
+            profile: { name: "", isFirstTime: true },
+            progress: { xp: 0, level: 1, currentLessonId: 1, completedLessons: [] },
+            stats: { totalTimeSeconds: 0, avgWpm: 0, bestWpm: 0, totalTests: 0, wpmHistory: [] },
+            streak: { count: 0, lastDate: null, history: {} }
+        };
+
+        // --- 2. STATE MANAGEMENT ---
+        let appData = null;
+        let typingSession = {
+            active: false,
+            started: false,
+            lesson: null,
+            textArray: [],
+            currentIndex: 0,
+            mistakes: 0,
+            startTime: null,
+            timerInterval: null,
+            elapsedSeconds: 0
+        };
+
+        // --- 3. STORAGE LOGIC ---
+        function loadData() {
+            try {
+                const stored = localStorage.getItem('typeforge_data');
+                if (stored) {
+                    appData = JSON.parse(stored);
+                    // Ensure structure exists if updating from old versions
+                    if(!appData.streak) appData.streak = DEFAULT_DATA.streak;
+                } else {
+                    appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+                }
+            } catch (e) {
+                console.error("Failed to load data:", e);
+                appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('typeforge_data', JSON.stringify(appData));
+            updateUI();
+        }
+
+        // --- 4. INITIALIZATION & UI RENDER ---
+        function initApp() {
+            loadData();
+            checkStreak();
+            
+            if (appData.profile.isFirstTime) {
+                showWelcomeModal();
+            } else {
+                updateUI();
+                setupLesson(appData.progress.currentLessonId);
+            }
+
+            setupEventListeners();
+        }
+
+        function updateUI() {
+            // Profile & Greeting
+            document.getElementById('profile-name').textContent = appData.profile.name || "Typist";
+            document.getElementById('avatar-initial').textContent = (appData.profile.name || "T").charAt(0).toUpperCase();
+            
+            const hour = new Date().getHours();
+            let greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+            document.getElementById('greeting-text').innerHTML = `${greeting}, ${appData.profile.name || "Typist"} <span class="wave">👋</span>`;
+
+            // Lesson Card
+            const currentLesson = LESSONS.find(l => l.id === appData.progress.currentLessonId) || LESSONS[0];
+            document.getElementById('current-lesson-title').textContent = `Lesson ${currentLesson.id} — ${currentLesson.title}`;
+            
+            // Progress Math
+            const totalLessons = LESSONS.length;
+            const completedCount = appData.progress.completedLessons.length;
+            const progressPercent = (completedCount / totalLessons) * 100;
+            
+            document.getElementById('lesson-progress-text').textContent = `${completedCount} / ${totalLessons} lessons`;
+            document.getElementById('lesson-progress-bar').style.width = `${progressPercent}%`;
+            document.getElementById('sidebar-progress-text').textContent = `Lesson ${completedCount} / ${totalLessons}`;
+            document.getElementById('sidebar-progress-bar').style.width = `${progressPercent}%`;
+
+            // Right Sidebar Stats
+            document.getElementById('ui-level').textContent = appData.progress.level;
+            
+            // Calculate XP for next level (simple scaling)
+            const baseXP = 200;
+            const currentLevelXP = (appData.progress.level - 1) * baseXP * 1.5;
+            const nextLevelXP = appData.progress.level * baseXP * 1.5;
+            const progressToNext = ((appData.progress.xp - currentLevelXP) / (nextLevelXP - currentLevelXP)) * 100;
+            
+            document.getElementById('ui-xp-needed').textContent = Math.round(nextLevelXP - appData.progress.xp);
+            document.getElementById('level-svg-path').style.strokeDasharray = `${Math.max(0, Math.min(100, progressToNext))}, 100`;
+            
+            let titles = ["Beginner", "Learner", "Novice", "Typist", "Skilled", "Advanced", "Master"];
+            document.getElementById('ui-title').textContent = titles[Math.min(appData.progress.level - 1, titles.length - 1)];
+
+            // Stats
+            document.getElementById('ui-avg-wpm').textContent = appData.stats.avgWpm;
+            document.getElementById('ui-best-wpm').textContent = appData.stats.bestWpm;
+            document.getElementById('ui-total-lessons').textContent = completedCount;
+            
+            const hours = Math.floor(appData.stats.totalTimeSeconds / 3600);
+            const minutes = Math.floor((appData.stats.totalTimeSeconds % 3600) / 60);
+            document.getElementById('ui-total-time').textContent = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+            // Streak
+            document.getElementById('ui-streak-count').textContent = `${appData.streak.count} days`;
+            renderStreakDays();
+        }
+
+        function renderStreakDays() {
+            const container = document.getElementById('streak-days-container');
+            container.innerHTML = '';
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const today = new Date().getDay(); // 0 is Sunday, 1 is Monday
+            const adjustedToday = today === 0 ? 6 : today - 1; // Make Mon=0, Sun=6
+
+            // Simplified display: just show checkmarks for recent activity
+            // In a real app, you'd map specific historical dates.
+            for (let i = 0; i < 7; i++) {
+                const isPastOrToday = i <= adjustedToday;
+                const hasStreak = isPastOrToday && (adjustedToday - i < appData.streak.count);
+                
+                const col = document.createElement('div');
+                col.className = 'flex flex-col items-center gap-2';
+                
+                const dayLabel = document.createElement('span');
+                dayLabel.className = i === adjustedToday ? 'text-text-primary' : '';
+                dayLabel.textContent = days[i];
+                
+                const icon = document.createElement('i');
+                if (hasStreak) {
+                    icon.className = 'ph-fill ph-check-circle text-accent text-lg';
+                } else {
+                    icon.className = 'ph ph-circle text-oled-surface3 text-lg';
+                }
+
+                col.appendChild(dayLabel);
+                col.appendChild(icon);
+                container.appendChild(col);
+            }
+        }
+
+        function checkStreak() {
+            const todayStr = new Date().toDateString();
+            if (appData.streak.lastDate !== todayStr) {
+                // If lastDate was not yesterday, reset streak (unless it's null meaning first day)
+                if (appData.streak.lastDate) {
+                    let yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    if (appData.streak.lastDate !== yesterday.toDateString()) {
+                        appData.streak.count = 0;
+                    }
+                }
+            }
+        }
+
+        function updateStreak() {
+            const todayStr = new Date().toDateString();
+            if (appData.streak.lastDate !== todayStr) {
+                appData.streak.count += 1;
+                appData.streak.lastDate = todayStr;
+                appData.streak.history[todayStr] = true;
+                saveData();
+            }
+        }
+
+        // --- STREAMING_CHUNK:TYPING ENGINE ---
+        function setupLesson(lessonId) {
+            const lesson = LESSONS.find(l => l.id === lessonId);
+            if (!lesson) return;
+
+            typingSession.lesson = lesson;
+            typingSession.textArray = lesson.text.split('');
+            typingSession.currentIndex = 0;
+            typingSession.mistakes = 0;
+            typingSession.started = false;
+            typingSession.active = true;
+            typingSession.elapsedSeconds = 0;
+            clearInterval(typingSession.timerInterval);
+
+            // Update UI Labels
+            document.getElementById('active-lesson-label').textContent = `Lesson ${lesson.id} • ${lesson.title}`;
+            document.getElementById('wpm-display').textContent = '0';
+            document.getElementById('acc-display').textContent = '100';
+            document.getElementById('timer-display').textContent = '00:00';
+            
+            // Render Text
+            const container = document.getElementById('text-display');
+            container.innerHTML = '';
+            
+            typingSession.textArray.forEach((char, index) => {
+                const span = document.createElement('span');
+                span.textContent = char;
+                span.className = 'char';
+                span.id = `char-${index}`;
+                container.appendChild(span);
+            });
+
+            // Show Overlay
+            document.getElementById('typing-overlay').style.display = 'flex';
+            container.classList.add('blur-[2px]');
+            
+            updateCaret();
+            updateKeyboardHint();
+            
+            // Auto focus workspace
+            document.getElementById('typing-text-container').focus();
+        }
+
+        function startTyping() {
+            if (typingSession.started) return;
+            
+            typingSession.started = true;
+            typingSession.startTime = Date.now();
+            
+            // Hide Overlay
+            document.getElementById('typing-overlay').style.display = 'none';
+            document.getElementById('text-display').classList.remove('blur-[2px]');
+
+            typingSession.timerInterval = setInterval(() => {
+                typingSession.elapsedSeconds = Math.floor((Date.now() - typingSession.startTime) / 1000);
+                updateMetrics();
+            }, 1000);
+        }
+
+        function handleKeydown(e) {
+            if (!typingSession.active) return;
+            
+            // Prevent default scrolling for space and single quotes
+            if (e.key === ' ' || e.key === "'") e.preventDefault();
+
+            // Restart shortcut
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                setupLesson(typingSession.lesson.id);
+                return;
+            }
+
+            // Start on Enter or first char
+            if (!typingSession.started) {
+                if (e.key === 'Enter' || e.key.length === 1) {
+                    startTyping();
+                    if(e.key === 'Enter') return;
+                } else {
+                    return;
+                }
+            }
+
+            const expectedChar = typingSession.textArray[typingSession.currentIndex];
+            const charSpan = document.getElementById(`char-${typingSession.currentIndex}`);
+
+            if (e.key === 'Backspace') {
+                if (typingSession.currentIndex > 0) {
+                    typingSession.currentIndex--;
+                    const prevSpan = document.getElementById(`char-${typingSession.currentIndex}`);
+                    
+                    // Only reduce mistakes if the backed-over char was incorrect
+                    if (prevSpan.classList.contains('incorrect')) {
+                        typingSession.mistakes--;
+                    }
+                    
+                    prevSpan.classList.remove('correct', 'incorrect');
+                    updateCaret();
+                    updateKeyboardHint();
+                }
+                return;
+            }
+
+            // Ignore modifier keys
+            if (e.key.length !== 1) return;
+
+            // Visual Keyboard Highlight
+            highlightKey(e.key);
+
+            if (e.key === expectedChar) {
+                charSpan.classList.add('correct');
+            } else {
+                charSpan.classList.add('incorrect');
+                typingSession.mistakes++;
+            }
+
+            typingSession.currentIndex++;
+            updateCaret();
+            updateKeyboardHint();
+            updateMetrics();
+
+            // Check Lesson Complete
+            if (typingSession.currentIndex >= typingSession.textArray.length) {
+                finishLesson();
+            }
+        }
+
+        function updateCaret() {
+            // Remove existing carets
+            document.querySelectorAll('.caret').forEach(el => el.remove());
+            
+            if (typingSession.currentIndex < typingSession.textArray.length) {
+                const targetSpan = document.getElementById(`char-${typingSession.currentIndex}`);
+                if (targetSpan) {
+                    const caret = document.createElement('div');
+                    caret.className = 'caret';
+                    targetSpan.appendChild(caret);
+                }
+            }
+        }
+
+        function highlightKey(key) {
+            const k = key.toLowerCase();
+            const el = document.querySelector(`.key[data-key="${k}"]`);
+            if (el) {
+                el.classList.add('active');
+                setTimeout(() => el.classList.remove('active'), 150);
+            }
+        }
+
+        function updateKeyboardHint() {
+            // Remove existing hints
+            document.querySelectorAll('.key').forEach(el => el.classList.remove('hint'));
+            
+            if (typingSession.currentIndex < typingSession.textArray.length) {
+                let nextChar = typingSession.textArray[typingSession.currentIndex].toLowerCase();
+                if(nextChar === ' ') nextChar = ' ';
+                const el = document.querySelector(`.key[data-key="${nextChar}"]`);
+                if (el) {
+                    el.classList.add('hint');
+                }
+            }
+        }
+
+        function updateMetrics() {
+            const minutes = typingSession.elapsedSeconds / 60;
+            const typedEntries = typingSession.currentIndex;
+            
+            // Standard WPM: (Chars / 5) / minutes
+            let wpm = 0;
+            if (minutes > 0) {
+                wpm = Math.round((typedEntries / 5) / minutes);
+            }
+            
+            // Accuracy
+            let accuracy = 100;
+            if (typedEntries > 0) {
+                accuracy = Math.round(((typedEntries - typingSession.mistakes) / typedEntries) * 100);
+            }
+            if (accuracy < 0) accuracy = 0;
+
+            // Time Formatting
+            const m = Math.floor(typingSession.elapsedSeconds / 60).toString().padStart(2, '0');
+            const s = (typingSession.elapsedSeconds % 60).toString().padStart(2, '0');
+
+            document.getElementById('wpm-display').textContent = wpm;
+            document.getElementById('acc-display').textContent = accuracy;
+            document.getElementById('timer-display').textContent = `${m}:${s}`;
+            
+            return { wpm, accuracy, timeStr: `${m}:${s}` };
+        }
+
+        function finishLesson() {
+            typingSession.active = false;
+            clearInterval(typingSession.timerInterval);
+            
+            const finalMetrics = updateMetrics();
+            
+            // Update Stats locally
+            appData.stats.totalTimeSeconds += typingSession.elapsedSeconds;
+            appData.stats.totalTests++;
+            
+            // WPM Math
+            appData.stats.wpmHistory.push(finalMetrics.wpm);
+            if (appData.stats.wpmHistory.length > 50) appData.stats.wpmHistory.shift();
+            
+            const totalSum = appData.stats.wpmHistory.reduce((a, b) => a + b, 0);
+            appData.stats.avgWpm = Math.round(totalSum / appData.stats.wpmHistory.length);
+            
+            if (finalMetrics.wpm > appData.stats.bestWpm) {
+                appData.stats.bestWpm = finalMetrics.wpm;
+            }
+
+            // Progression
+            if (!appData.progress.completedLessons.includes(typingSession.lesson.id)) {
+                appData.progress.completedLessons.push(typingSession.lesson.id);
+            }
+            
+            appData.progress.xp += typingSession.lesson.xp;
+            
+            // Level up check
+            const baseXP = 200;
+            const nextLevelXP = appData.progress.level * baseXP * 1.5;
+            if(appData.progress.xp >= nextLevelXP) {
+                appData.progress.level++;
+                // In a fuller version, trigger a level up animation
+            }
+
+            // Move to next lesson
+            if(appData.progress.currentLessonId === typingSession.lesson.id && typingSession.lesson.id < LESSONS.length) {
+                appData.progress.currentLessonId++;
+            }
+
+            updateStreak();
+            saveData();
+            
+            // Show Result Modal
+            document.getElementById('result-wpm').textContent = finalMetrics.wpm;
+            document.getElementById('result-acc').textContent = finalMetrics.accuracy + '%';
+            document.getElementById('result-time').textContent = finalMetrics.timeStr;
+            document.getElementById('result-xp').textContent = `+${typingSession.lesson.xp}`;
+            
+            const modal = document.getElementById('result-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            
+            // Remove blur from background focus
+            document.getElementById('typing-text-container').blur();
+        }
+
+        // --- STREAMING_CHUNK:EVENT LISTENERS & MODALS ---
+        function setupEventListeners() {
+            
+            document.getElementById('typing-text-container').addEventListener('keydown', handleKeydown);
+            document.getElementById('typing-text-container').addEventListener('click', () => {
+                if(!typingSession.started && typingSession.active) {
+                   startTyping();
+                }
+            });
+
+            // Prevent loss of focus on the typing container easily
+            document.addEventListener('click', (e) => {
+                const workspace = document.getElementById('typing-workspace');
+                const container = document.getElementById('typing-text-container');
+                // If clicking inside workspace, maintain focus
+                if(workspace.contains(e.target)) {
+                    container.focus();
+                }
+            });
+
+            document.getElementById('restart-lesson-btn').addEventListener('click', () => {
+                setupLesson(typingSession.lesson.id);
+            });
+
+            document.getElementById('start-lesson-btn').addEventListener('click', () => {
+                setupLesson(appData.progress.currentLessonId);
+                // Scroll to workspace on mobile
+                document.getElementById('typing-workspace').scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // Welcome Modal
+            document.getElementById('welcome-start-btn').addEventListener('click', () => {
+                const name = document.getElementById('welcome-name-input').value.trim();
+                appData.profile.name = name || "Typist";
+                appData.profile.isFirstTime = false;
+                saveData();
+                
+                const modal = document.getElementById('welcome-modal');
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+                
+                setupLesson(1);
+            });
+
+            // Result Modal
+            document.getElementById('result-retry-btn').addEventListener('click', () => {
+                closeResultModal();
+                setupLesson(typingSession.lesson.id);
+            });
+
+            document.getElementById('result-next-btn').addEventListener('click', () => {
+                closeResultModal();
+                setupLesson(appData.progress.currentLessonId);
+            });
+        }
+
+        function showWelcomeModal() {
+            const modal = document.getElementById('welcome-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeResultModal() {
+            const modal = document.getElementById('result-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+        
+        function showSettingsModal() {
+            document.getElementById('settings-name').value = appData.profile.name;
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            
+            // Re-focus typing area if a session is active
+            if(typingSession.active) {
+                document.getElementById('typing-text-container').focus();
+            }
+        }
+
+        // --- STREAMING_CHUNK:SETTINGS ACTIONS (Export/Import/Delete) ---
+        function saveName() {
+            const newName = document.getElementById('settings-name').value.trim();
+            if(newName) {
+                appData.profile.name = newName;
+                saveData();
+                closeSettingsModal();
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "typeforge_backup.json");
+            document.body.appendChild(downloadAnchorNode); // required for firefox
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if(imported && imported.profile && imported.progress) {
+                        appData = imported;
+                        saveData();
+                        alert("Data imported successfully!");
+                        window.location.reload();
+                    } else {
+                        alert("Invalid backup file.");
+                    }
+                } catch (err) {
+                    alert("Error reading file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearData() {
+            if(confirm("Are you sure? This will permanently delete your TypeForge progress, statistics, achievements, and settings from this browser.")) {
+                localStorage.removeItem('typeforge_data');
+                window.location.reload();
+            }
+        }
+
+        // --- STREAMING_CHUNK:BOOTSTRAP ---
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        // Map global variables to window if necessary for onclick attributes
+        window.showSettingsModal = showSettingsModal;
+        window.closeSettingsModal = closeSettingsModal;
+        window.saveName = saveName;
+        window.exportData = exportData;
+        window.importData = importData;
+        window.clearData = clearData;
+
+    </script>
+</body>
+</html>
