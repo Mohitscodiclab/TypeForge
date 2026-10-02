@@ -25,14 +25,25 @@
                             surface2: '#111111',
                             surface3: '#1a1a1a',
                         },
+                        light: {
+                            surface: '#f3f4f6',
+                            surface2: '#ffffff',
+                            surface3: '#e5e7eb',
+                        },
                         accent: {
                             DEFAULT: '#00ff88',
                             dark: '#00cc6a'
                         },
                         text: {
-                            primary: '#f0f6fc',
-                            secondary: '#8b949e',
-                            muted: '#484f58'
+                            primary: 'var(--color-text-primary)',
+                            secondary: 'var(--color-text-secondary)',
+                            muted: 'var(--color-text-muted)'
+                        },
+                        bg: {
+                            base: 'var(--color-bg-base)',
+                            surface: 'var(--color-bg-surface)',
+                            surface2: 'var(--color-bg-surface2)',
+                            surface3: 'var(--color-bg-surface3)',
                         }
                     }
                 }
@@ -41,25 +52,51 @@
     </script>
 
     <style>
-        body {
-            background-color: #000000;
-            color: #f0f6fc;
-            overflow-x: hidden;
+        :root {
+            --color-bg-base: #000000;
+            --color-bg-surface: #0a0a0a;
+            --color-bg-surface2: #111111;
+            --color-bg-surface3: #1a1a1a;
+            --color-text-primary: #f0f6fc;
+            --color-text-secondary: #8b949e;
+            --color-text-muted: #484f58;
+            --font-mono-current: 'Fira Code', monospace;
         }
 
-        /* Custom Scrollbar for OLED */
+        html.light {
+            --color-bg-base: #f8fafc;
+            --color-bg-surface: #f1f5f9;
+            --color-bg-surface2: #ffffff;
+            --color-bg-surface3: #e2e8f0;
+            --color-text-primary: #0f172a;
+            --color-text-secondary: #475569;
+            --color-text-muted: #94a3b8;
+        }
+
+        body {
+            background-color: var(--color-bg-base);
+            color: var(--color-text-primary);
+            overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .font-mono-custom {
+            font-family: var(--font-mono-current);
+        }
+
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #000000; }
-        ::-webkit-scrollbar-thumb { background: #1a1a1a; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #333333; }
+        ::-webkit-scrollbar-track { background: var(--color-bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--color-bg-surface3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
 
         /* Typing Area Styles */
         .char {
-            color: #484f58;
+            color: var(--color-text-muted);
             transition: color 0.1s ease;
             position: relative;
         }
-        .char.correct { color: #8b949e; }
+        .char.correct { color: var(--color-text-secondary); }
         .char.incorrect { 
             color: #ff5555; 
             text-decoration: underline;
@@ -86,7 +123,9 @@
         /* Keyboard Key Styles */
         .key {
             transition: all 0.1s ease;
-            border: 1px solid #1a1a1a;
+            border: 1px solid var(--color-bg-surface3);
+            background-color: var(--color-bg-surface3);
+            color: var(--color-text-secondary);
         }
         .key.active {
             background-color: #00ff88;
@@ -101,282 +140,370 @@
 
         /* Modals & Overlays */
         .glass-overlay {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(8px);
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+        }
+        html.light .glass-overlay {
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Utility classes mapped to CSS variables for dynamic theming */
+        .bg-surface { background-color: var(--color-bg-surface); }
+        .bg-surface2 { background-color: var(--color-bg-surface2); }
+        .bg-surface3 { background-color: var(--color-bg-surface3); }
+        .border-surface3 { border-color: var(--color-bg-surface3); }
+        .text-primary { color: var(--color-text-primary); }
+        .text-secondary { color: var(--color-text-secondary); }
+        .text-muted { color: var(--color-text-muted); }
+        
+        /* Game Styles */
+        #game-canvas {
+            display: none;
+            width: 100%;
+            height: 400px;
+            background-color: var(--color-bg-surface2);
+            border-radius: 1.5rem;
+            border: 1px solid var(--color-bg-surface3);
+            position: relative;
+            overflow: hidden;
+        }
+        .falling-word {
+            position: absolute;
+            font-family: var(--font-mono-current);
+            font-size: 1.25rem;
+            color: var(--color-text-primary);
+            white-space: nowrap;
+        }
+        .falling-word .typed {
+            color: #00ff88;
         }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden selection:bg-accent selection:text-black">
+<body class="flex h-screen overflow-hidden selection:bg-accent selection:text-black relative">
 
-    <nav class="w-20 md:w-64 h-full bg-oled-surface border-r border-oled-surface3 flex flex-col justify-between py-6 shrink-0 transition-all duration-300">
+    <!-- Mobile Menu Button -->
+    <button id="mobile-menu-btn" class="md:hidden absolute top-6 right-6 z-50 text-text-primary p-2 bg-surface2 rounded-lg border border-surface3">
+        <i class="ph ph-list text-2xl"></i>
+    </button>
+
+    <nav id="sidebar" class="fixed md:static inset-y-0 left-0 transform -translate-x-full md:translate-x-0 w-64 h-full bg-surface border-r border-surface3 flex flex-col justify-between py-6 shrink-0 transition-transform duration-300 z-40">
         <div>
-            <div class="px-4 md:px-8 mb-10 flex items-center gap-3">
+            <div class="px-6 md:px-8 mb-10 flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-black font-bold text-xl shrink-0">
                     TF
                 </div>
-                <div class="hidden md:block">
-                    <h1 class="font-bold text-lg leading-tight tracking-wide">TypeForge</h1>
-                    <p class="text-[10px] text-text-secondary uppercase tracking-widest">Type Better. Think Faster.</p>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight tracking-wide text-primary">TypeForge</h1>
+                    <p class="text-[10px] text-secondary uppercase tracking-widest">Type Better. Think Faster.</p>
                 </div>
             </div>
 
             <ul class="space-y-2 px-3 md:px-4">
                 <li>
-                    <a href="#" class="nav-item active flex items-center gap-4 px-4 py-3 rounded-xl bg-oled-surface3 text-accent font-medium">
+                    <a href="#" onclick="switchView('dashboard')" id="nav-dashboard" class="nav-item active flex items-center gap-4 px-4 py-3 rounded-xl bg-surface3 text-accent font-medium transition-colors">
                         <i class="ph ph-house text-xl"></i>
-                        <span class="hidden md:block">Home</span>
+                        <span>Home</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                    <a href="#" onclick="switchView('lessons')" id="nav-lessons" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-secondary hover:text-primary hover:bg-surface2 transition-colors">
                         <i class="ph ph-book-open text-xl"></i>
-                        <span class="hidden md:block">Lessons</span>
+                        <span>Lessons</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
-                        <i class="ph ph-lightning text-xl"></i>
-                        <span class="hidden md:block">Practice</span>
+                    <a href="#" onclick="switchView('games')" id="nav-games" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-secondary hover:text-primary hover:bg-surface2 transition-colors">
+                        <i class="ph ph-game-controller text-xl"></i>
+                        <span>Games</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-secondary hover:text-primary hover:bg-surface2 transition-colors opacity-50 cursor-not-allowed" title="Coming Soon">
                         <i class="ph ph-chart-bar text-xl"></i>
-                        <span class="hidden md:block">Stats</span>
+                        <span>Stats</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                    <a href="#" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-secondary hover:text-primary hover:bg-surface2 transition-colors opacity-50 cursor-not-allowed" title="Coming Soon">
                         <i class="ph ph-trophy text-xl"></i>
-                        <span class="hidden md:block">Achievements</span>
+                        <span>Achievements</span>
                     </a>
                 </li>
                 <li>
-                    <a href="#" onclick="showSettingsModal()" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-text-secondary hover:text-text-primary hover:bg-oled-surface2 transition-colors">
+                    <a href="#" onclick="showSettingsModal()" class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl text-secondary hover:text-primary hover:bg-surface2 transition-colors">
                         <i class="ph ph-gear text-xl"></i>
-                        <span class="hidden md:block">Settings</span>
+                        <span>Settings</span>
                     </a>
                 </li>
             </ul>
         </div>
 
-        <div class="px-4 hidden md:block">
-            <div class="bg-oled-surface2 p-4 rounded-2xl border border-oled-surface3 relative overflow-hidden">
+        <div class="px-4 pb-4">
+            <div class="bg-surface2 p-4 rounded-2xl border border-surface3 relative overflow-hidden mb-4">
                 <div class="absolute -right-4 -bottom-4 opacity-10">
                     <i class="ph-fill ph-keyboard text-6xl text-accent"></i>
                 </div>
                 <h4 class="text-sm font-semibold mb-1 text-accent">Small steps</h4>
-                <p class="text-xs text-text-secondary mb-3">make big progress.</p>
-                <div class="w-full bg-oled-surface3 h-1.5 rounded-full overflow-hidden">
+                <p class="text-xs text-secondary mb-3">make big progress.</p>
+                <div class="w-full bg-surface3 h-1.5 rounded-full overflow-hidden">
                     <div id="sidebar-progress-bar" class="bg-accent h-full w-1/4 rounded-full"></div>
                 </div>
-                <p class="text-[10px] text-text-muted mt-2" id="sidebar-progress-text">Day 1 / 30</p>
+                <p class="text-[10px] text-muted mt-2" id="sidebar-progress-text">Lesson 1 / 30</p>
+            </div>
+            <div class="text-center text-[10px] text-muted">
+                Created by <span class="font-bold text-secondary">MOHITSCODICLAB</span>
             </div>
         </div>
     </nav>
 
-    <main class="flex-1 h-full overflow-y-auto overflow-x-hidden p-6 md:p-10 scroll-smooth">
+    <!-- Overlay for mobile sidebar -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
+
+    <main class="flex-1 h-full overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-10 scroll-smooth pt-20 md:pt-10">
         
         <!-- Header -->
-        <header class="flex justify-between items-end mb-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
             <div>
-                <h2 class="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2">
+                <h2 class="text-2xl md:text-3xl font-bold mb-2 flex items-center gap-2 text-primary">
                     <span id="greeting-text">Good evening, Typist</span> <span class="wave">👋</span>
                 </h2>
-                <p class="text-text-secondary text-sm md:text-base">Today is a new chance to get better. Keep going!</p>
+                <p class="text-secondary text-sm md:text-base">Today is a new chance to get better. Keep going!</p>
             </div>
             
-            <div class="hidden md:flex items-center gap-4">
-                <button class="w-10 h-10 rounded-full bg-oled-surface2 flex items-center justify-center text-text-secondary hover:text-accent transition-colors">
-                    <i class="ph ph-sun"></i>
+            <div class="flex items-center gap-2 md:gap-4 self-end md:self-auto">
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-surface2 border border-surface3 flex items-center justify-center text-secondary hover:text-accent transition-colors" title="Toggle Theme">
+                    <i id="theme-icon" class="ph ph-sun text-lg"></i>
                 </button>
-                <div class="flex items-center gap-3 bg-oled-surface2 py-2 px-4 rounded-full cursor-pointer hover:bg-oled-surface3 transition-colors" onclick="showSettingsModal()">
+                <button onclick="toggleFullScreen()" class="w-10 h-10 rounded-full bg-surface2 border border-surface3 flex items-center justify-center text-secondary hover:text-accent transition-colors hidden sm:flex" title="Toggle Fullscreen">
+                    <i id="fullscreen-icon" class="ph ph-corners-out text-lg"></i>
+                </button>
+                <div class="flex items-center gap-3 bg-surface2 border border-surface3 py-2 px-4 rounded-full cursor-pointer hover:bg-surface3 transition-colors" onclick="showSettingsModal()">
                     <div class="w-8 h-8 rounded-full bg-accent text-black font-bold flex items-center justify-center text-sm" id="avatar-initial">T</div>
-                    <div class="flex flex-col">
-                        <span class="text-sm font-medium leading-none mb-1" id="profile-name">Typist</span>
+                    <div class="flex flex-col hidden sm:flex">
+                        <span class="text-sm font-medium leading-none mb-1 text-primary" id="profile-name">Typist</span>
                         <span class="text-[10px] text-accent leading-none">● Online</span>
                     </div>
                 </div>
             </div>
         </header>
 
-        <section class="bg-oled-surface2 rounded-3xl p-6 border border-oled-surface3 mb-8 relative overflow-hidden group">
-            <div class="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
-            
-            <div class="flex flex-col md:flex-row justify-between md:items-center gap-6 relative z-10">
-                <div class="flex gap-5 items-start">
-                    <div class="w-12 h-12 rounded-2xl bg-oled-surface3 border border-oled-surface/50 flex items-center justify-center shrink-0">
-                        <i class="ph ph-target text-2xl text-accent"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-accent uppercase tracking-widest font-semibold mb-1">Today's Lesson</p>
-                        <h3 class="text-xl font-bold mb-2" id="current-lesson-title">Lesson 1 — Basics</h3>
-                        <p class="text-text-secondary text-sm max-w-md" id="current-lesson-desc">Learn the home-row keys and build accurate finger placement with fundamental strokes.</p>
-                    </div>
-                </div>
+        <!-- VIEW: DASHBOARD (Typing Workspace) -->
+        <div id="view-dashboard" class="view-section">
+            <section class="bg-surface2 rounded-3xl p-6 border border-surface3 mb-8 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                 
-                <div class="flex flex-col items-end gap-3 shrink-0">
-                    <button id="start-lesson-btn" class="bg-accent hover:bg-accent-dark text-black font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center gap-2 transform hover:scale-105">
-                        Start Lesson <i class="ph ph-arrow-right"></i>
-                    </button>
-                    <div class="flex flex-col items-end w-full">
-                        <span class="text-xs text-text-secondary mb-1" id="lesson-progress-text">0 / 30 lessons</span>
-                        <div class="w-32 bg-oled-surface3 h-1.5 rounded-full overflow-hidden">
-                            <div id="lesson-progress-bar" class="bg-accent h-full w-0 rounded-full transition-all duration-1000"></div>
+                <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-6 relative z-10">
+                    <div class="flex gap-5 items-start">
+                        <div class="w-12 h-12 rounded-2xl bg-surface3 border border-surface3 flex items-center justify-center shrink-0">
+                            <i class="ph ph-target text-2xl text-accent"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs text-accent uppercase tracking-widest font-semibold mb-1">Current Lesson</p>
+                            <h3 class="text-xl font-bold mb-2 text-primary" id="current-lesson-title">Lesson 1 — Basics</h3>
+                            <p class="text-secondary text-sm max-w-md" id="current-lesson-desc">Learn the home-row keys and build accurate finger placement with fundamental strokes.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col items-start lg:items-end gap-3 shrink-0 w-full lg:w-auto">
+                        <button id="start-lesson-btn" class="w-full lg:w-auto bg-accent hover:bg-accent-dark text-black font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-105">
+                            Start Lesson <i class="ph ph-arrow-right"></i>
+                        </button>
+                        <div class="flex flex-col items-end w-full">
+                            <span class="text-xs text-secondary mb-1" id="lesson-progress-text">0 / 30 lessons</span>
+                            <div class="w-full lg:w-32 bg-surface3 h-1.5 rounded-full overflow-hidden">
+                                <div id="lesson-progress-bar" class="bg-accent h-full w-0 rounded-full transition-all duration-1000"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <section id="typing-workspace" class="bg-oled-surface2 rounded-3xl p-6 md:p-10 border border-oled-surface3 mb-8 relative min-h-[400px] flex flex-col transition-all duration-300">
+            <section id="typing-workspace" class="bg-surface2 rounded-3xl p-4 md:p-6 lg:p-10 border border-surface3 mb-8 relative min-h-[400px] flex flex-col transition-all duration-300">
+                
+                <!-- Lesson Header within Typing Area -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-surface3 pb-4 gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-secondary text-sm font-medium" id="active-lesson-label">Lesson 1 • Basics</span>
+                        <span class="bg-surface3 text-primary text-[10px] px-2 py-1 rounded-md uppercase tracking-wider" id="active-lesson-diff">Easy</span>
+                    </div>
+                    <div class="flex items-center gap-4 text-sm font-mono-custom w-full sm:w-auto justify-between sm:justify-end" id="real-time-metrics">
+                        <div class="flex items-center gap-1.5 text-secondary"><i class="ph ph-clock text-accent"></i> <span id="timer-display">00:00</span></div>
+                        <div class="flex items-center gap-1.5 text-secondary"><i class="ph ph-speedometer text-accent"></i> <span id="wpm-display">0</span> WPM</div>
+                        <div class="flex items-center gap-1.5 text-secondary"><i class="ph ph-target text-accent"></i> <span id="acc-display">100</span>%</div>
+                    </div>
+                </div>
+
+                <!-- The Text -->
+                <div id="typing-text-container" class="font-mono-custom text-xl md:text-2xl lg:text-3xl leading-relaxed text-muted mb-12 relative whitespace-pre-wrap select-none focus:outline-none" tabindex="0">
+                    <div class="absolute inset-0 flex items-center justify-center bg-surface2/90 z-20 backdrop-blur-sm rounded-xl" id="typing-overlay">
+                        <p class="text-primary text-base md:text-lg flex flex-col items-center gap-3 text-center px-4">
+                            <span>Click here or press <kbd class="bg-surface3 px-2 py-1 rounded-lg text-accent border border-surface3 font-mono text-sm">Enter</kbd> to start</span>
+                        </p>
+                    </div>
+                    <div id="text-display" class="relative z-10 break-words w-full blur-[2px] transition-all duration-300 p-2"></div>
+                </div>
+
+                <!-- On-Screen Keyboard -->
+                <div class="mt-auto max-w-3xl mx-auto w-full transition-opacity duration-300 overflow-x-auto pb-4" id="keyboard-container">
+                    <div class="flex flex-col gap-1 md:gap-2 min-w-[600px]">
+                        <!-- Row 1 -->
+                        <div class="flex justify-center gap-1 md:gap-2">
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="q">Q</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="w">W</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="e">E</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="r">R</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="t">T</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="y">Y</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="u">U</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="i">I</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="o">O</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="p">P</div>
+                        </div>
+                        <!-- Row 2 -->
+                        <div class="flex justify-center gap-1 md:gap-2 ml-4 md:ml-6">
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="a">A</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="s">S</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="d">D</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="f">F</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="g">G</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="h">H</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="j">J</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="k">K</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="l">L</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key=";">;</div>
+                        </div>
+                        <!-- Row 3 -->
+                        <div class="flex justify-center gap-1 md:gap-2 ml-10 md:ml-12">
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="z">Z</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="x">X</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="c">C</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="v">V</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="b">B</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="n">N</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="m">M</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key=",">,</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key=".">.</div>
+                            <div class="key w-10 h-12 md:w-12 md:h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key="/">/</div>
+                        </div>
+                        <!-- Spacebar -->
+                        <div class="flex justify-center mt-2">
+                            <div class="key w-48 md:w-64 h-12 rounded-lg flex items-center justify-center font-mono text-xs md:text-sm" data-key=" ">SPACE</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="restart-lesson-btn" class="absolute bottom-4 right-4 md:bottom-6 md:right-6 p-3 rounded-xl bg-surface3 text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-surface3 transition-colors z-30 shadow-lg md:shadow-none" title="Restart (Tab)">
+                    <i class="ph ph-arrow-counter-clockwise text-xl"></i>
+                </button>
+            </section>
+        </div>
+
+        <!-- VIEW: LESSONS LIST -->
+        <div id="view-lessons" class="view-section hidden">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-primary"><i class="ph ph-books text-accent"></i> All Lessons</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" id="lessons-grid">
+                <!-- Lessons dynamically generated here -->
+            </div>
+        </div>
+
+        <!-- VIEW: GAMES -->
+        <div id="view-games" class="view-section hidden">
+            <h2 class="text-2xl font-bold mb-2 flex items-center gap-2 text-primary"><i class="ph ph-game-controller text-accent"></i> Word Drop</h2>
+            <p class="text-secondary mb-6">Type the falling words before they hit the ground to increase precision under pressure.</p>
             
-            <!-- Lesson Header within Typing Area -->
-            <div class="flex justify-between items-center mb-8 border-b border-oled-surface3 pb-4">
-                <div class="flex items-center gap-3">
-                    <span class="text-text-secondary text-sm" id="active-lesson-label">Lesson 1 • Basics</span>
-                    <span class="bg-oled-surface3 text-text-primary text-[10px] px-2 py-1 rounded-md uppercase tracking-wider">Easy</span>
+            <div class="bg-surface2 rounded-3xl p-6 border border-surface3 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex gap-4 font-mono-custom text-sm">
+                        <div class="text-secondary">Score: <span id="game-score" class="text-primary font-bold text-lg">0</span></div>
+                        <div class="text-secondary">Missed: <span id="game-missed" class="text-[#ff5555] font-bold text-lg">0</span>/3</div>
+                    </div>
+                    <button id="start-game-btn" onclick="startWordDropGame()" class="bg-accent hover:bg-accent-dark text-black font-semibold py-2 px-6 rounded-lg transition-colors">
+                        Start Game
+                    </button>
                 </div>
-                <div class="flex items-center gap-4 text-sm font-mono" id="real-time-metrics">
-                    <div class="flex items-center gap-1.5 text-text-secondary"><i class="ph ph-clock text-accent"></i> <span id="timer-display">00:00</span></div>
-                    <div class="flex items-center gap-1.5 text-text-secondary"><i class="ph ph-speedometer text-accent"></i> <span id="wpm-display">0</span> WPM</div>
-                    <div class="flex items-center gap-1.5 text-text-secondary"><i class="ph ph-target text-accent"></i> <span id="acc-display">100</span>%</div>
+                
+                <div id="game-canvas" tabindex="0" class="focus:outline-none focus:border-accent shadow-inner">
+                    <div id="game-overlay" class="absolute inset-0 bg-surface/80 flex flex-col items-center justify-center z-10 backdrop-blur-sm">
+                        <i class="ph ph-keyboard text-4xl text-accent mb-2"></i>
+                        <p class="text-primary text-lg font-medium">Ready to type fast?</p>
+                        <p class="text-secondary text-sm">Click Start Game above</p>
+                    </div>
                 </div>
-            </div>
-
-            <!-- The Text -->
-            <div id="typing-text-container" class="font-mono text-2xl md:text-3xl leading-relaxed text-text-muted mb-12 relative whitespace-pre-wrap select-none focus:outline-none" tabindex="0">
-                <div class="absolute inset-0 flex items-center justify-center bg-oled-surface2/90 z-20" id="typing-overlay">
-                    <p class="text-text-primary text-lg flex flex-col items-center gap-2">
-                        <span>Click here or press <kbd class="bg-oled-surface3 px-2 py-1 rounded text-accent border border-oled-surface3">Enter</kbd> to start</span>
-                    </p>
-                </div>
-                <div id="text-display" class="relative z-10 break-words w-full blur-[2px] transition-all duration-300"></div>
-            </div>
-
-            <!-- On-Screen Keyboard -->
-            <div class="mt-auto max-w-3xl mx-auto w-full transition-opacity duration-300" id="keyboard-container">
-                <div class="flex flex-col gap-2">
-                    <!-- Row 1 -->
-                    <div class="flex justify-center gap-1.5 md:gap-2">
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="q">Q</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="w">W</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="e">E</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="r">R</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="t">T</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="y">Y</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="u">U</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="i">I</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="o">O</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="p">P</div>
-                    </div>
-                    <!-- Row 2 -->
-                    <div class="flex justify-center gap-1.5 md:gap-2 ml-4">
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="a">A</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="s">S</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="d">D</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="f">F</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="g">G</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="h">H</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="j">J</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="k">K</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="l">L</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=";">;</div>
-                    </div>
-                    <!-- Row 3 -->
-                    <div class="flex justify-center gap-1.5 md:gap-2 ml-10">
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="z">Z</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="x">X</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="c">C</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="v">V</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="b">B</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="n">N</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="m">M</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=",">,</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=".">.</div>
-                        <div class="key w-8 h-10 md:w-12 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key="/">/</div>
-                    </div>
-                    <!-- Spacebar -->
-                    <div class="flex justify-center mt-2">
-                        <div class="key w-48 md:w-64 h-10 md:h-12 rounded-lg bg-oled-surface3 flex items-center justify-center font-mono text-xs md:text-sm text-text-secondary" data-key=" ">SPACE</div>
-                    </div>
+                <div class="mt-4 text-center text-sm text-secondary">
+                    Type the words exactly as they appear. Case matters.
                 </div>
             </div>
-            
-            <button id="restart-lesson-btn" class="absolute bottom-6 right-6 p-3 rounded-xl bg-oled-surface3 text-text-secondary hover:text-text-primary hover:bg-oled-surface transition-colors" title="Restart (Tab)">
-                <i class="ph ph-arrow-counter-clockwise text-xl"></i>
-            </button>
-        </section>
+        </div>
 
     </main>
 
-    <aside class="w-80 h-full bg-oled-surface border-l border-oled-surface3 p-6 shrink-0 hidden xl:flex flex-col overflow-y-auto">
+    <aside class="w-80 h-full bg-surface border-l border-surface3 p-6 shrink-0 hidden xl:flex flex-col overflow-y-auto">
         
         <!-- Level Progress -->
-        <div class="bg-oled-surface2 rounded-2xl p-5 border border-oled-surface3 mb-6">
-            <h3 class="flex items-center gap-2 text-sm font-semibold mb-4 text-text-primary">
+        <div class="bg-surface2 rounded-2xl p-5 border border-surface3 mb-6 shadow-sm">
+            <h3 class="flex items-center gap-2 text-sm font-semibold mb-4 text-primary">
                 <i class="ph ph-trend-up text-accent"></i> Your Progress
             </h3>
             <div class="flex items-center gap-6">
                 <div class="relative w-16 h-16 flex items-center justify-center">
                     <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                        <path class="text-oled-surface3" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="text-surface3" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                         <path id="level-svg-path" class="text-accent transition-all duration-1000 ease-out" stroke-width="3" stroke-dasharray="0, 100" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                     </svg>
                     <div class="absolute flex flex-col items-center">
-                        <span class="text-[10px] text-text-secondary leading-none">Level</span>
-                        <span class="text-xl font-bold leading-none mt-1" id="ui-level">1</span>
+                        <span class="text-[10px] text-secondary leading-none">Level</span>
+                        <span class="text-xl font-bold leading-none mt-1 text-primary" id="ui-level">1</span>
                     </div>
                 </div>
                 <div>
-                    <p class="text-accent font-medium flex items-center gap-1 text-sm"><span class="w-2 h-2 rounded-full bg-accent inline-block"></span> <span id="ui-title">Beginner</span></p>
-                    <p class="text-xs text-text-secondary mt-1">Next level at <span id="ui-xp-needed">50</span> XP</p>
+                    <p class="text-accent font-medium flex items-center gap-1 text-sm"><span class="w-2 h-2 rounded-full bg-accent inline-block shadow-[0_0_8px_rgba(0,255,136,0.6)]"></span> <span id="ui-title">Beginner</span></p>
+                    <p class="text-xs text-secondary mt-1">Next level at <span id="ui-xp-needed">50</span> XP</p>
                 </div>
             </div>
         </div>
 
         <!-- Daily Streak -->
-        <div class="bg-oled-surface2 rounded-2xl p-5 border border-oled-surface3 mb-6">
+        <div class="bg-surface2 rounded-2xl p-5 border border-surface3 mb-6 shadow-sm">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <h3 class="flex items-center gap-2 text-sm font-semibold text-primary">
                     <i class="ph-fill ph-fire text-[#ff6b6b]"></i> Daily Streak
                 </h3>
-                <span class="font-bold text-sm" id="ui-streak-count">0 days</span>
+                <span class="font-bold text-sm text-primary" id="ui-streak-count">0 days</span>
             </div>
-            <div class="flex justify-between text-xs text-text-secondary font-mono" id="streak-days-container">
+            <div class="flex justify-between text-xs text-secondary font-mono" id="streak-days-container">
                 <!-- Generated by JS -->
             </div>
         </div>
 
         <!-- Your Stats -->
-        <div class="bg-oled-surface2 rounded-2xl p-5 border border-oled-surface3 mb-6">
-            <h3 class="flex items-center gap-2 text-sm font-semibold mb-4 text-text-primary">
+        <div class="bg-surface2 rounded-2xl p-5 border border-surface3 mb-6 shadow-sm">
+            <h3 class="flex items-center gap-2 text-sm font-semibold mb-4 text-primary">
                 <i class="ph ph-chart-line text-accent"></i> Your Stats
             </h3>
             <div class="grid grid-cols-2 gap-y-6 gap-x-4">
                 <div>
-                    <p class="text-xs text-text-secondary mb-1">Avg. WPM</p>
-                    <p class="text-2xl font-bold font-mono" id="ui-avg-wpm">0</p>
+                    <p class="text-xs text-secondary mb-1">Avg. WPM</p>
+                    <p class="text-2xl font-bold font-mono-custom text-primary" id="ui-avg-wpm">0</p>
                 </div>
                 <div>
-                    <p class="text-xs text-text-secondary mb-1">Best WPM</p>
-                    <p class="text-2xl font-bold font-mono" id="ui-best-wpm">0</p>
+                    <p class="text-xs text-secondary mb-1">Best WPM</p>
+                    <p class="text-2xl font-bold font-mono-custom text-primary" id="ui-best-wpm">0</p>
                 </div>
                 <div>
-                    <p class="text-xs text-text-secondary mb-1">Total Time</p>
-                    <p class="text-base font-semibold" id="ui-total-time">0m</p>
+                    <p class="text-xs text-secondary mb-1">Total Time</p>
+                    <p class="text-base font-semibold text-primary" id="ui-total-time">0m</p>
                 </div>
                 <div>
-                    <p class="text-xs text-text-secondary mb-1">Completed</p>
-                    <p class="text-base font-semibold" id="ui-total-lessons">0</p>
+                    <p class="text-xs text-secondary mb-1">Completed</p>
+                    <p class="text-base font-semibold text-primary" id="ui-total-lessons">0</p>
                 </div>
             </div>
         </div>
 
         <!-- Quote -->
-        <div class="mt-auto bg-oled-surface2/50 rounded-2xl p-5 border border-oled-surface3 border-dashed relative overflow-hidden">
-            <i class="ph-fill ph-quotes text-3xl text-text-muted absolute -top-2 -left-2 opacity-50"></i>
-            <p class="text-sm italic text-text-secondary relative z-10 pl-2">"Discipline today, freedom tomorrow."</p>
+        <div class="mt-auto bg-surface2/50 rounded-2xl p-5 border border-surface3 border-dashed relative overflow-hidden">
+            <i class="ph-fill ph-quotes text-3xl text-muted absolute -top-2 -left-2 opacity-30"></i>
+            <p class="text-sm italic text-secondary relative z-10 pl-2">"Discipline today, freedom tomorrow."</p>
         </div>
 
     </aside>
@@ -442,29 +569,55 @@
     </div>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="fixed inset-0 glass-overlay z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-oled-surface2 border border-oled-surface3 p-8 rounded-3xl max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300 relative">
-            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 text-text-secondary hover:text-white"><i class="ph ph-x text-xl"></i></button>
+    <div id="settings-modal" class="fixed inset-0 glass-overlay z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 p-4">
+        <div class="bg-surface2 border border-surface3 p-6 md:p-8 rounded-3xl max-w-md w-full shadow-2xl transform scale-95 transition-transform duration-300 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeSettingsModal()" class="absolute top-6 right-6 text-secondary hover:text-primary bg-surface3 rounded-full p-1"><i class="ph ph-x text-xl"></i></button>
             
-            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><i class="ph ph-gear text-accent"></i> Settings</h2>
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 text-primary"><i class="ph ph-gear text-accent"></i> Settings</h2>
             
             <div class="space-y-6">
+                <!-- Profile Settings -->
                 <div>
-                    <label class="block text-sm font-medium text-text-secondary mb-2">Display Name</label>
+                    <label class="block text-sm font-medium text-secondary mb-2">Display Name</label>
                     <div class="flex gap-2">
-                        <input type="text" id="settings-name" class="w-full bg-oled-surface3 border border-oled-surface/50 rounded-xl px-4 py-2 text-text-primary focus:outline-none focus:border-accent">
-                        <button onclick="saveName()" class="bg-oled-surface3 hover:bg-accent hover:text-black px-4 rounded-xl transition-colors text-sm font-medium">Save</button>
+                        <input type="text" id="settings-name" class="w-full bg-surface3 border border-surface3 rounded-xl px-4 py-2 text-primary focus:outline-none focus:border-accent font-medium">
+                        <button onclick="saveSettings()" class="bg-surface3 hover:bg-accent hover:text-black px-4 rounded-xl transition-colors text-sm font-bold text-primary border border-surface3 hover:border-accent">Save</button>
                     </div>
                 </div>
 
-                <div class="border-t border-oled-surface3 pt-6">
-                    <h3 class="text-sm font-semibold mb-4 text-[#ff5555]">Danger Zone</h3>
-                    <p class="text-xs text-text-secondary mb-4">Your data is stored locally in this browser. Export it for backup, or delete it to start fresh.</p>
+                <!-- Appearance Settings -->
+                <div class="border-t border-surface3 pt-6">
+                    <h3 class="text-sm font-semibold mb-4 text-primary flex items-center gap-2"><i class="ph ph-paint-brush"></i> Appearance</h3>
+                    
+                    <div class="mb-4 flex items-center justify-between">
+                        <label class="text-sm font-medium text-secondary">Theme</label>
+                        <div class="flex bg-surface3 p-1 rounded-lg border border-surface3">
+                            <button onclick="setTheme('dark')" id="btn-theme-dark" class="px-3 py-1 rounded text-xs font-medium bg-surface text-primary shadow-sm">Dark (OLED)</button>
+                            <button onclick="setTheme('light')" id="btn-theme-light" class="px-3 py-1 rounded text-xs font-medium text-secondary hover:text-primary">Light</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-secondary mb-2">Typing Font</label>
+                        <select id="settings-font" onchange="changeFont()" class="w-full bg-surface3 border border-surface3 rounded-xl px-4 py-2 text-primary focus:outline-none focus:border-accent text-sm appearance-none cursor-pointer">
+                            <option value="'Fira Code', monospace">Fira Code (Default Mono)</option>
+                            <option value="'Roboto Mono', monospace">Roboto Mono</option>
+                            <option value="'Space Mono', monospace">Space Mono</option>
+                            <option value="'Courier New', Courier, monospace">Courier New</option>
+                            <option value="'Inter', sans-serif">Inter (Sans Serif)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Data Settings -->
+                <div class="border-t border-surface3 pt-6">
+                    <h3 class="text-sm font-semibold mb-4 text-[#ff5555] flex items-center gap-2"><i class="ph ph-warning"></i> Danger Zone</h3>
+                    <p class="text-xs text-secondary mb-4">Your data is stored locally in this browser. Export it for backup, or delete it to start fresh.</p>
                     <div class="flex flex-col gap-3">
-                        <button onclick="exportData()" class="bg-oled-surface3 hover:bg-oled-surface text-text-primary font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+                        <button onclick="exportData()" class="bg-surface3 hover:bg-surface border border-surface3 text-primary font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
                             <i class="ph ph-download-simple"></i> Export Data (JSON)
                         </button>
-                        <button onclick="document.getElementById('import-file').click()" class="bg-oled-surface3 hover:bg-oled-surface text-text-primary font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+                        <button onclick="document.getElementById('import-file').click()" class="bg-surface3 hover:bg-surface border border-surface3 text-primary font-medium py-2 px-4 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
                             <i class="ph ph-upload-simple"></i> Import Data
                             <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
                         </button>
@@ -476,6 +629,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Font Loading (Added more mono fonts) -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <script>
         // --- 1. DATA STRUCTURES & LESSONS ---
@@ -498,7 +654,7 @@
         ];
 
         const DEFAULT_DATA = {
-            profile: { name: "", isFirstTime: true },
+            profile: { name: "", isFirstTime: true, theme: 'dark', font: "'Fira Code', monospace" },
             progress: { xp: 0, level: 1, currentLessonId: 1, completedLessons: [] },
             stats: { totalTimeSeconds: 0, avgWpm: 0, bestWpm: 0, totalTests: 0, wpmHistory: [] },
             streak: { count: 0, lastDate: null, history: {} }
@@ -518,6 +674,20 @@
             elapsedSeconds: 0
         };
 
+        // Game State
+        let gameState = {
+            active: false,
+            score: 0,
+            missed: 0,
+            words: [],
+            currentTyped: "",
+            targetWordObj: null,
+            animationId: null,
+            spawnInterval: null,
+            speedMultiplier: 1
+        };
+        const GAME_WORDS = ["function", "variable", "return", "boolean", "string", "array", "object", "console", "window", "document", "promise", "async", "await", "typing", "fast", "code", "forge", "master", "skill", "keyboard"];
+
         // --- 3. STORAGE LOGIC ---
         function loadData() {
             try {
@@ -526,6 +696,8 @@
                     appData = JSON.parse(stored);
                     // Ensure structure exists if updating from old versions
                     if(!appData.streak) appData.streak = DEFAULT_DATA.streak;
+                    if(!appData.profile.theme) appData.profile.theme = 'dark';
+                    if(!appData.profile.font) appData.profile.font = "'Fira Code', monospace";
                 } else {
                     appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
                 }
@@ -544,6 +716,8 @@
         function initApp() {
             loadData();
             checkStreak();
+            applyTheme(appData.profile.theme);
+            applyFont(appData.profile.font);
             
             if (appData.profile.isFirstTime) {
                 showWelcomeModal();
@@ -552,6 +726,7 @@
                 setupLesson(appData.progress.currentLessonId);
             }
 
+            renderLessonsList();
             setupEventListeners();
         }
 
@@ -605,6 +780,149 @@
             // Streak
             document.getElementById('ui-streak-count').textContent = `${appData.streak.count} days`;
             renderStreakDays();
+
+            // Update Lessons List UI if rendered
+            updateLessonsListStatus();
+        }
+
+        function switchView(viewName) {
+            // Stop active sessions
+            if(typingSession.active) finishLesson(true); // pass true to abort without saving
+            if(gameState.active) stopGame();
+
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            
+            // Show target view
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            
+            // Update nav active state
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('active', 'bg-surface3', 'text-accent', 'font-medium');
+                el.classList.add('text-secondary');
+            });
+            const activeNav = document.getElementById(`nav-${viewName}`);
+            if(activeNav) {
+                activeNav.classList.add('active', 'bg-surface3', 'text-accent', 'font-medium');
+                activeNav.classList.remove('text-secondary', 'hover:text-primary', 'hover:bg-surface2');
+            }
+
+            // Mobile menu logic
+            if(window.innerWidth < 768) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
+            }
+            
+            // Special setups per view
+            if(viewName === 'dashboard') {
+                setupLesson(appData.progress.currentLessonId);
+            } else if (viewName === 'games') {
+                document.getElementById('game-canvas').style.display = 'block';
+            }
+        }
+
+        function toggleTheme() {
+            const newTheme = appData.profile.theme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+            appData.profile.theme = newTheme;
+            saveData();
+        }
+
+        function applyTheme(theme) {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            
+            if (theme === 'light') {
+                html.classList.add('light');
+                html.classList.remove('dark');
+                icon.classList.remove('ph-sun');
+                icon.classList.add('ph-moon');
+                
+                // Update settings modal toggle UI
+                document.getElementById('btn-theme-light').classList.replace('text-secondary', 'text-primary');
+                document.getElementById('btn-theme-light').classList.add('bg-surface', 'shadow-sm');
+                document.getElementById('btn-theme-dark').classList.replace('text-primary', 'text-secondary');
+                document.getElementById('btn-theme-dark').classList.remove('bg-surface', 'shadow-sm');
+            } else {
+                html.classList.add('dark');
+                html.classList.remove('light');
+                icon.classList.remove('ph-moon');
+                icon.classList.add('ph-sun');
+                
+                // Update settings modal toggle UI
+                document.getElementById('btn-theme-dark').classList.replace('text-secondary', 'text-primary');
+                document.getElementById('btn-theme-dark').classList.add('bg-surface', 'shadow-sm');
+                document.getElementById('btn-theme-light').classList.replace('text-primary', 'text-secondary');
+                document.getElementById('btn-theme-light').classList.remove('bg-surface', 'shadow-sm');
+            }
+        }
+
+        function applyFont(fontFamily) {
+            document.documentElement.style.setProperty('--font-mono-current', fontFamily);
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+                document.getElementById('fullscreen-icon').classList.replace('ph-corners-out', 'ph-corners-in');
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                    document.getElementById('fullscreen-icon').classList.replace('ph-corners-in', 'ph-corners-out');
+                }
+            }
+        }
+
+        function renderLessonsList() {
+            const grid = document.getElementById('lessons-grid');
+            grid.innerHTML = '';
+            
+            LESSONS.forEach(lesson => {
+                const isCompleted = appData.progress.completedLessons.includes(lesson.id);
+                const isCurrent = appData.progress.currentLessonId === lesson.id;
+                
+                const card = document.createElement('div');
+                card.className = `p-5 rounded-2xl border transition-all cursor-pointer hover:-translate-y-1 ${
+                    isCurrent ? 'bg-surface3 border-accent' : 
+                    'bg-surface2 border-surface3 hover:border-surface3/80'
+                }`;
+                card.onclick = () => selectLessonFromList(lesson.id);
+                
+                let iconHtml = '';
+                if(isCompleted) {
+                    iconHtml = '<i class="ph-fill ph-check-circle text-accent text-xl"></i>';
+                } else if (isCurrent) {
+                    iconHtml = '<i class="ph-fill ph-play-circle text-accent text-xl animate-pulse"></i>';
+                } else {
+                    iconHtml = '<i class="ph ph-lock-key text-surface3 text-xl"></i>';
+                }
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="text-xs font-semibold ${isCompleted || isCurrent ? 'text-accent' : 'text-secondary'} uppercase tracking-wider">Lesson ${lesson.id}</span>
+                        ${iconHtml}
+                    </div>
+                    <h3 class="text-lg font-bold mb-1 text-primary">${lesson.title}</h3>
+                    <div class="flex items-center gap-2 mt-4">
+                        <span class="text-[10px] px-2 py-1 bg-surface3 rounded text-primary">${lesson.diff}</span>
+                        <span class="text-[10px] text-secondary">+${lesson.xp} XP</span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function updateLessonsListStatus() {
+            if(document.getElementById('view-lessons').classList.contains('hidden')) return;
+            renderLessonsList(); // Re-render to update classes
+        }
+
+        function selectLessonFromList(id) {
+            // Allow selecting any lesson for practice, doesn't jump overall progress unless it's the next uncompleted one
+            switchView('dashboard');
+            setupLesson(id);
         }
 
         function renderStreakDays() {
@@ -680,6 +998,7 @@
 
             // Update UI Labels
             document.getElementById('active-lesson-label').textContent = `Lesson ${lesson.id} • ${lesson.title}`;
+            document.getElementById('active-lesson-diff').textContent = lesson.diff;
             document.getElementById('wpm-display').textContent = '0';
             document.getElementById('acc-display').textContent = '100';
             document.getElementById('timer-display').textContent = '00:00';
@@ -855,42 +1174,18 @@
             return { wpm, accuracy, timeStr: `${m}:${s}` };
         }
 
-        function finishLesson() {
+        function finishLesson(abort = false) {
             typingSession.active = false;
             clearInterval(typingSession.timerInterval);
             
+            if (abort) return;
+
             const finalMetrics = updateMetrics();
             
             // Update Stats locally
             appData.stats.totalTimeSeconds += typingSession.elapsedSeconds;
             appData.stats.totalTests++;
             
-            // WPM Math
-            appData.stats.wpmHistory.push(finalMetrics.wpm);
-            if (appData.stats.wpmHistory.length > 50) appData.stats.wpmHistory.shift();
-            
-            const totalSum = appData.stats.wpmHistory.reduce((a, b) => a + b, 0);
-            appData.stats.avgWpm = Math.round(totalSum / appData.stats.wpmHistory.length);
-            
-            if (finalMetrics.wpm > appData.stats.bestWpm) {
-                appData.stats.bestWpm = finalMetrics.wpm;
-            }
-
-            // Progression
-            if (!appData.progress.completedLessons.includes(typingSession.lesson.id)) {
-                appData.progress.completedLessons.push(typingSession.lesson.id);
-            }
-            
-            appData.progress.xp += typingSession.lesson.xp;
-            
-            // Level up check
-            const baseXP = 200;
-            const nextLevelXP = appData.progress.level * baseXP * 1.5;
-            if(appData.progress.xp >= nextLevelXP) {
-                appData.progress.level++;
-                // In a fuller version, trigger a level up animation
-            }
-
             // Move to next lesson
             if(appData.progress.currentLessonId === typingSession.lesson.id && typingSession.lesson.id < LESSONS.length) {
                 appData.progress.currentLessonId++;
@@ -913,24 +1208,230 @@
             document.getElementById('typing-text-container').blur();
         }
 
+        // --- STREAMING_CHUNK:GAME ENGINE (Word Drop) ---
+        function startWordDropGame() {
+            const canvas = document.getElementById('game-canvas');
+            canvas.focus(); // Needs focus to capture typing
+            document.getElementById('game-overlay').style.display = 'none';
+            
+            // Reset State
+            gameState.active = true;
+            gameState.score = 0;
+            gameState.missed = 0;
+            gameState.words = [];
+            gameState.currentTyped = "";
+            gameState.targetWordObj = null;
+            gameState.speedMultiplier = 1;
+            
+            updateGameUI();
+            
+            // Clear existing elements except overlay
+            Array.from(canvas.children).forEach(child => {
+                if(child.id !== 'game-overlay') child.remove();
+            });
+
+            // Start Spawning
+            gameState.spawnInterval = setInterval(spawnWord, 2000);
+            
+            // Start Loop
+            lastTime = performance.now();
+            gameState.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function stopGame(showOverlay = true) {
+            gameState.active = false;
+            cancelAnimationFrame(gameState.animationId);
+            clearInterval(gameState.spawnInterval);
+            if(showOverlay) {
+                const overlay = document.getElementById('game-overlay');
+                overlay.style.display = 'flex';
+                overlay.innerHTML = `
+                    <i class="ph ph-game-controller text-4xl text-accent mb-2"></i>
+                    <p class="text-primary text-xl font-bold mb-1">Game Over</p>
+                    <p class="text-secondary mb-4">Score: ${gameState.score}</p>
+                    <button onclick="startWordDropGame()" class="bg-surface3 hover:bg-surface text-primary border border-surface3 px-4 py-2 rounded-lg transition-colors">Play Again</button>
+                `;
+            }
+        }
+
+        function spawnWord() {
+            if(!gameState.active) return;
+            const canvas = document.getElementById('game-canvas');
+            const wordText = GAME_WORDS[Math.floor(Math.random() * GAME_WORDS.length)];
+            
+            const el = document.createElement('div');
+            el.className = 'falling-word';
+            el.textContent = wordText;
+            
+            // Random X position (padding for width)
+            const maxX = canvas.clientWidth - 100;
+            el.style.left = `${Math.max(10, Math.random() * maxX)}px`;
+            el.style.top = '-30px';
+            
+            canvas.appendChild(el);
+            
+            gameState.words.push({
+                text: wordText,
+                el: el,
+                y: -30,
+                speed: (0.5 + Math.random() * 0.5) * gameState.speedMultiplier
+            });
+
+            // Increase difficulty slightly
+            gameState.speedMultiplier += 0.02;
+            
+            // Adjust spawn rate based on speed
+            if(gameState.speedMultiplier > 1.5) {
+                clearInterval(gameState.spawnInterval);
+                gameState.spawnInterval = setInterval(spawnWord, 1500);
+            }
+        }
+
+        let lastTime = 0;
+        function gameLoop(currentTime) {
+            if(!gameState.active) return;
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            
+            const canvas = document.getElementById('game-canvas');
+            const height = canvas.clientHeight;
+
+            // Move words
+            for (let i = gameState.words.length - 1; i >= 0; i--) {
+                const word = gameState.words[i];
+                // Move down (roughly 60fps independent)
+                word.y += word.speed * (deltaTime / 16);
+                word.el.style.top = `${word.y}px`;
+
+                // Check out of bounds
+                if (word.y > height) {
+                    word.el.remove();
+                    gameState.words.splice(i, 1);
+                    gameState.missed++;
+                    
+                    // If this was the target word, clear selection
+                    if(gameState.targetWordObj === word) {
+                        gameState.targetWordObj = null;
+                        gameState.currentTyped = "";
+                    }
+                    
+                    updateGameUI();
+                    
+                    if(gameState.missed >= 3) {
+                        stopGame();
+                        return;
+                    }
+                }
+            }
+
+            gameState.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function handleGameTyping(e) {
+            if(!gameState.active || e.key.length > 1) return;
+            e.preventDefault();
+
+            const char = e.key.toLowerCase();
+            
+            // If we don't have a target word yet, try to find one starting with char
+            if(!gameState.targetWordObj) {
+                // Find highest word starting with char
+                let highest = null;
+                for(let w of gameState.words) {
+                    if(w.text.startsWith(char)) {
+                        if(!highest || w.y > highest.y) {
+                            highest = w;
+                        }
+                    }
+                }
+                
+                if(highest) {
+                    gameState.targetWordObj = highest;
+                    gameState.currentTyped = char;
+                    updateWordHighlight(highest);
+                }
+            } else {
+                // We have a target, check next char
+                const expected = gameState.targetWordObj.text[gameState.currentTyped.length];
+                if(char === expected) {
+                    gameState.currentTyped += char;
+                    updateWordHighlight(gameState.targetWordObj);
+                    
+                    // Check if complete
+                    if(gameState.currentTyped === gameState.targetWordObj.text) {
+                        // Word typed!
+                        gameState.targetWordObj.el.remove();
+                        gameState.words = gameState.words.filter(w => w !== gameState.targetWordObj);
+                        
+                        // Add XP and Score
+                        gameState.score += gameState.targetWordObj.text.length * 10;
+                        appData.progress.xp += 2; // Small XP reward for game
+                        
+                        gameState.targetWordObj = null;
+                        gameState.currentTyped = "";
+                        updateGameUI();
+                        saveData(); // Save XP
+                    }
+                } else {
+                    // Mistake on target word - visual feedback could be added here
+                    gameState.targetWordObj.el.style.color = '#ff5555';
+                    setTimeout(() => {
+                         if(gameState.targetWordObj) gameState.targetWordObj.el.style.color = 'var(--color-text-primary)';
+                         updateWordHighlight(gameState.targetWordObj);
+                    }, 200);
+                }
+            }
+        }
+
+        function updateWordHighlight(wordObj) {
+            if(!wordObj || !wordObj.el) return;
+            const typedPart = wordObj.text.substring(0, gameState.currentTyped.length);
+            const restPart = wordObj.text.substring(gameState.currentTyped.length);
+            wordObj.el.innerHTML = `<span class="typed">${typedPart}</span>${restPart}`;
+        }
+
+        function updateGameUI() {
+            document.getElementById('game-score').textContent = gameState.score;
+            document.getElementById('game-missed').textContent = gameState.missed;
+        }
+
         // --- STREAMING_CHUNK:EVENT LISTENERS & MODALS ---
         function setupEventListeners() {
             
+            // Typing Workspace Events
             document.getElementById('typing-text-container').addEventListener('keydown', handleKeydown);
             document.getElementById('typing-text-container').addEventListener('click', () => {
-                if(!typingSession.started && typingSession.active) {
+                // Only start if dashboard is active view
+                if(!document.getElementById('view-dashboard').classList.contains('hidden') && !typingSession.started && typingSession.active) {
                    startTyping();
                 }
             });
 
-            // Prevent loss of focus on the typing container easily
+            // Game Workspace Events
+            document.getElementById('game-canvas').addEventListener('keydown', handleGameTyping);
+
+            // Maintain focus helper
             document.addEventListener('click', (e) => {
-                const workspace = document.getElementById('typing-workspace');
-                const container = document.getElementById('typing-text-container');
-                // If clicking inside workspace, maintain focus
-                if(workspace.contains(e.target)) {
-                    container.focus();
+                const typingWorkspace = document.getElementById('typing-workspace');
+                const typingContainer = document.getElementById('typing-text-container');
+                const gameView = document.getElementById('view-games');
+                const gameCanvas = document.getElementById('game-canvas');
+
+                if(typingWorkspace.contains(e.target) && !document.getElementById('view-dashboard').classList.contains('hidden')) {
+                    typingContainer.focus();
+                } else if (gameView.contains(e.target) && !gameView.classList.contains('hidden') && gameState.active) {
+                    gameCanvas.focus();
                 }
+            });
+
+            // Mobile Menu
+            document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.toggle('hidden');
+            });
+            document.getElementById('sidebar-overlay').addEventListener('click', () => {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                document.getElementById('sidebar-overlay').classList.add('hidden');
             });
 
             document.getElementById('restart-lesson-btn').addEventListener('click', () => {
@@ -982,7 +1483,8 @@
         }
         
         function showSettingsModal() {
-            document.getElementById('settings-name').value = appData.profile.name;
+            document.getElementById('settings-name').value = appData.profile.name || "";
+            document.getElementById('settings-font').value = appData.profile.font || "'Fira Code', monospace";
             const modal = document.getElementById('settings-modal');
             modal.classList.remove('hidden');
             setTimeout(() => modal.classList.remove('opacity-0'), 10);
@@ -993,20 +1495,29 @@
             modal.classList.add('opacity-0');
             setTimeout(() => modal.classList.add('hidden'), 300);
             
-            // Re-focus typing area if a session is active
-            if(typingSession.active) {
+            // Re-focus appropriate area if a session is active
+            if(typingSession.active && !document.getElementById('view-dashboard').classList.contains('hidden')) {
                 document.getElementById('typing-text-container').focus();
+            } else if (gameState.active && !document.getElementById('view-games').classList.contains('hidden')) {
+                document.getElementById('game-canvas').focus();
             }
         }
 
-        // --- STREAMING_CHUNK:SETTINGS ACTIONS (Export/Import/Delete) ---
-        function saveName() {
+        // --- STREAMING_CHUNK:SETTINGS ACTIONS ---
+        function saveSettings() {
             const newName = document.getElementById('settings-name').value.trim();
-            if(newName) {
+            if(newName !== undefined) {
                 appData.profile.name = newName;
-                saveData();
-                closeSettingsModal();
             }
+            saveData();
+            closeSettingsModal();
+        }
+
+        function changeFont() {
+            const font = document.getElementById('settings-font').value;
+            appData.profile.font = font;
+            applyFont(font);
+            saveData();
         }
 
         function exportData() {
@@ -1054,7 +1565,6 @@
         // Map global variables to window if necessary for onclick attributes
         window.showSettingsModal = showSettingsModal;
         window.closeSettingsModal = closeSettingsModal;
-        window.saveName = saveName;
         window.exportData = exportData;
         window.importData = importData;
         window.clearData = clearData;
